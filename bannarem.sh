@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TIME="$1"
+MAXCOUNT=50
 
 # Converte il tempo fornito in un formato comprensibile per il comando date
 CURRENT_TIME=$(date -d "today $TIME" +"%H:%M")
@@ -31,7 +32,7 @@ if [ -f "$LOG_FILE_16" ]; then
     COUNT=$(echo $line | awk '{print $1}')
     IP_CLASS_16=$(echo $line | awk '{print $2"/16"}')
     
-    if [ "$COUNT" -gt 49 ]; then
+    if [ "$COUNT" -gt $MAXCOUNT ]; then
       BAN_CLASSI_16["$IP_CLASS_16"]=1
     fi
   done < "$LOG_FILE_16"
@@ -49,7 +50,7 @@ if [ -f "$LOG_FILE_24" ]; then
     IP_CLASS_16=$(echo $IP_CLASS_24 | awk -F'.' '{print $1"."$2".0.0/16"}')
 
     # Aggiungi la classe /24 se supera 50 connessioni o se appartiene a una classe /16 da bannare
-    if [ "$COUNT" -gt 49 ] || [ -n "${BAN_CLASSI_16["$IP_CLASS_16"]}" ]; then
+    if [ "$COUNT" -gt $MAXCOUNT ] || [ -n "${BAN_CLASSI_16["$IP_CLASS_16"]}" ]; then
       BAN_CLASSI_24["$IP_CLASS_24"]=1
     fi
   done < "$LOG_FILE_24"
