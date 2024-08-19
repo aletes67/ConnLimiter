@@ -59,8 +59,13 @@ else
   exit 1
 fi
 
-# Effettua i ban per le classi /24
+# Effettua i ban per le classi /24 solo se non sono gia presenti in iptables
 for IP_CLASS in "${!BAN_CLASSI_24[@]}"; do
-  ./banna.sh "$IP_CLASS/24" 48
+  if ! sudo iptables -L -n | grep -q "$IP_CLASS"; then
+    BAN_DURATION=$(shuf -i 6-48 -n 1)  # Genera una durata di ban casuale tra 6 e 48 ore
+    ./banna.sh "$IP_CLASS/24" "$BAN_DURATION"
+  else
+    echo "La classe $IP_CLASS/24 già bloccata in iptables..."
+  fi
 done
 
