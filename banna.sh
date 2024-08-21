@@ -40,12 +40,16 @@ extract_info() {
 }
 
 # Esegui il comando whois sull'IP
-whois_output=$(whois $ip_classei_no_24)
+whois_output=$(whois $classe_ip_no_24)
 
 # Estrai le informazioni
 read organization abuse_email <<< $(extract_info "$whois_output")
 
-
+# Se organization e abuse_email non sono valorizzati, prova con l'opzione -B
+if [ -z "$organization" ] && [ -z "$abuse_email" ]; then
+    whois_output=$(whois -B $classe_ip_no_24)
+    read organization abuse_email <<< $(extract_info "$whois_output")
+fi
 
 
 # Esegui il blocco dell'IP con iptables
