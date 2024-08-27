@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Verifica se sono stati forniti due parametri
-if [ "$#" -ne 2 ]; then
-    echo "Uso: $0 classe_ip num_ore"
+# Verifica se sono stati forniti almeno due parametri
+if [ "$#" -lt 2 ]; then
+    echo "Uso: $0 classe_ip num_ore [num_connessioni]"
     exit 1
 fi
 
 # Parametri di input
 classe_ip=$1
 num_ore=$2
+num_connessioni=$3  # Parametro opzionale
 
 # Rimuovi il .0 finale per controllare contro la lista di IP da ignorare
 classe_ip_no_dot_zero=$(echo $classe_ip | sed 's/\.0\/24//')
@@ -16,10 +17,9 @@ classe_ip_no_24=$(echo $classe_ip | sed 's/\/24//')
 
 # Verifica se l'IP senza .0 nella lista di esclusione
 if grep -q "^$classe_ip_no_dot_zero" /etc/ddos/ignore.ip.list; then
-    echo "L'IP $classe_ip_no_dot_zero e in lista di esclusione. Nessuna azione eseguita."
+    echo "L'IP $classe_ip_no_dot_zero è in lista di esclusione. Nessuna azione eseguita."
     exit 0
 fi
-
 
 # Funzione per estrarre il netname, organization e l'email di abuse
 extract_info() {
@@ -51,19 +51,22 @@ if [ -z "$organization" ] && [ -z "$abuse_email" ]; then
     read organization abuse_email <<< $(extract_info "$whois_output")
 fi
 
-
 # Esegui il blocco dell'IP con iptables
 sudo iptables -I INPUT 1 -s $classe_ip -j DROP
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Blocco della classe IP $classe_ip eseguito con successo. Provider: $organization, Email abuse: $abuse_email."
 
-# Calcola l'orario in cui il blocco sara rimosso
+# Calcola l'orario in cui il blocco sarà rimosso
 unban_time=$(date -d "+$num_ore hours" +"%Y-%m-%d %H:%M:%S")
 
-# Scrivi l'IP bannato e l'ora di rimozione nel file di log
+# Scrivi l'IP bannato, l'ora di rimozione e il numero di connessioni nel file di log
 log_file="./ip_ban.log"
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Classe IP $classe_ip bannata. Rimozione prevista per: $unban_time. Provider: $organization, Email abuse: $abuse_email" | sudo tee -a $log_file
+if [ -n "$num_connessioni" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Classe IP $classe_ip bannata. Numero connessioni: $num_connessioni. Rimozione prevista per: $unban_time. Provider: $organization, Email abuse: $abuse_email" | sudo tee -a $log_file
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Classe IP $classe_ip bannata. Numero connessioni: 0. Rimozione prevista per: $unban_time. Provider: $organization, Email abuse: $abuse_email" | sudo tee -a $log_file
+fi
 
 # Pianifica la rimozione del blocco con at
 echo "sudo iptables -D INPUT -s $classe_ip -j DROP" | at now + $num_ore hours
-echo "Il blocco sara rimosso automaticamente tra $num_ore ore."
+echo "Il blocco sarà rimosso automaticamente tra $num_ore ore."
 
